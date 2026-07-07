@@ -3,11 +3,17 @@
 import { useState, useTransition } from "react";
 import { getFilePreviewUrl } from "@/lib/actions/admin";
 
+/**
+ * CATATAN MIGRASI:
+ * Prop diganti dari `filePath` menjadi `submissionId` — server yang query ulang
+ * file_path & storage_provider dari database, supaya client tidak bisa
+ * memalsukan path file untuk mengakses submission lain.
+ */
 export default function FilePreviewButton({
-  filePath,
+  submissionId,
   fileName,
 }: {
-  filePath: string;
+  submissionId: string;
   fileName: string;
 }) {
   const [pending, startTransition] = useTransition();
@@ -16,7 +22,7 @@ export default function FilePreviewButton({
   function handleClick() {
     setError(null);
     startTransition(async () => {
-      const result = await getFilePreviewUrl(filePath);
+      const result = await getFilePreviewUrl(submissionId);
       if (result.error) {
         setError(result.error);
       } else if (result.url) {

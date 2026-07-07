@@ -97,7 +97,7 @@ export default async function ReviewSubmissionPage({
       </div>
 
       <div className="mb-6">
-        <FilePreviewButton filePath={item.file_path} fileName={item.file_name} />
+        <FilePreviewButton submissionId={item.id} fileName={item.file_name} />
       </div>
 
       {item.status === "pending" ? (

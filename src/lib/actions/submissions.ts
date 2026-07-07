@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { uploadToCpanel } from "@/lib/storage/cpanel";
 import { CHECKLIST_ITEMS } from "@/lib/helpers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -24,20 +25,23 @@ export async function submitKarya(formData: FormData) {
   const tahun = Number(formData.get("tahun"));
   const kata_kunci = String(formData.get("kata_kunci") || "").trim();
 
-  // File sudah diupload ke Storage di client; di sini hanya terima referensinya
-  const file_path = String(formData.get("file_path") || "").trim();
-  const file_name = String(formData.get("file_name") || "").trim();
-
   if (!judul || !abstrak || !jenis_karya || !program_studi || !tahun) {
     return { error: "Lengkapi semua field wajib." };
   }
-  if (!file_path || !file_name) {
+
+  // CATATAN MIGRASI: sebelumnya file sudah diupload ke Supabase Storage di client,
+  // action ini cuma menerima file_path/file_name jadi (dikirim sebagai field terpisah).
+  // Sekarang file mentah (File object) dikirim langsung, action ini yang upload ke cPanel.
+  const file = formData.get("file") as File | null;
+
+  if (!file || file.size === 0) {
     return { error: "File PDF wajib diupload." };
   }
-
-  // Pastikan file yang direferensikan benar milik user ini (folder pertama = user.id)
-  if (!file_path.startsWith(`${user.id}/`)) {
-    return { error: "File tidak valid." };
+  if (file.size > 20 * 1024 * 1024) {
+    return { error: "Ukuran file melebihi 20MB." };
+  }
+  if (file.type !== "application/pdf") {
+    return { error: "File harus berformat PDF." };
   }
 
   const checklist: Record<string, boolean> = {};
@@ -49,6 +53,20 @@ export async function submitKarya(formData: FormData) {
   );
   if (!semuaChecklistDicentang) {
     return { error: "Semua syarat pada checklist wajib dicentang sebelum submit." };
+  }
+
+  // Folder pertama = user.id, konsisten dengan aturan lama di Supabase Storage policy
+  const safeFileName = file.name.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9._-]/g, "");
+  const file_path = `${user.id}/${Date.now()}-${safeFileName}`;
+  const file_name = file.name;
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  try {
+    await uploadToCpanel(buffer, file_path);
+  } catch (err) {
+    console.error("Gagal upload ke cPanel:", err);
+    return { error: "Gagal mengupload file ke server. Silakan coba lagi." };
   }
 
   const { error: insertError } = await supabase.from("submissions").insert({
@@ -63,10 +81,13 @@ export async function submitKarya(formData: FormData) {
     file_path,
     file_name,
     checklist,
+    storage_provider: "cpanel", // submission baru selalu lewat cPanel
     status: "pending",
   });
 
   if (insertError) {
+    // TODO: pertimbangkan cleanup file di cPanel (deleteFromCpanel) kalau insert gagal,
+    // supaya tidak ada file "yatim" tanpa record di database.
     return { error: "Gagal menyimpan data: " + insertError.message };
   }
 

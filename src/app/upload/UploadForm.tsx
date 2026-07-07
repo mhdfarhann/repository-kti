@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { submitKarya } from "@/lib/actions/submissions";
 import { CHECKLIST_ITEMS } from "@/lib/helpers";
 
@@ -14,7 +13,6 @@ export default function UploadForm({
 }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const [stage, setStage] = useState<"idle" | "uploading" | "saving">("idle");
 
   async function handleSubmit(formData: FormData) {
     setError(null);
@@ -31,59 +29,19 @@ export default function UploadForm({
 
     startTransition(async () => {
       try {
-        setStage("uploading");
-        const supabase = createClient();
-
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
-        if (!user) {
-          setError("Sesi login berakhir, silakan masuk kembali.");
-          setStage("idle");
-          return;
-        }
-
-        // Folder pertama HARUS sama dengan auth.uid(), sesuai policy storage.objects
-        const filePath = `${user.id}/${Date.now()}-${file.name.replace(/\s+/g, "_")}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from("kti-files")
-          .upload(filePath, file, { contentType: "application/pdf" });
-
-        if (uploadError) {
-          setError(`Gagal mengupload file: ${uploadError.message}`);
-          setStage("idle");
-          return;
-        }
-
-        setStage("saving");
-
-        const payload = new FormData();
-        for (const [key, value] of formData.entries()) {
-          if (key !== "file") payload.append(key, value);
-        }
-        payload.append("file_path", filePath);
-        payload.append("file_name", file.name);
-
-        const result = await submitKarya(payload);
+        // File dikirim langsung sebagai bagian dari FormData ke server action.
+        // Server yang akan mengupload ke cPanel via FTPS — kredensial FTP tidak
+        // pernah ada di sisi browser, beda dari alur lama yang upload langsung
+        // ke Supabase Storage dari client.
+        const result = await submitKarya(formData);
         if (result?.error) {
           setError(result.error);
-          setStage("idle");
         }
       } catch (err) {
         setError("Terjadi kesalahan tak terduga. Silakan coba lagi.");
-        setStage("idle");
       }
     });
   }
-
-  const buttonLabel =
-    stage === "uploading"
-      ? "Mengupload file..."
-      : stage === "saving"
-        ? "Menyimpan..."
-        : "Submit untuk Review";
 
   return (
     <form action={handleSubmit} className="space-y-5">
@@ -220,7 +178,7 @@ export default function UploadForm({
         disabled={pending}
         className="w-full rounded-lg bg-[#0B3358] px-4 py-2.5 font-medium text-white transition-colors hover:bg-[#082944] disabled:opacity-60"
       >
-        {pending ? buttonLabel : "Submit untuk Review"}
+        {pending ? "Mengupload & menyimpan..." : "Submit untuk Review"}
       </button>
     </form>
   );

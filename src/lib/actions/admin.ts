@@ -3,6 +3,7 @@
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { identifierToEmail } from "@/lib/helpers";
 import { revalidatePath } from "next/cache";
+import { getFileUrl, type GetFileUrlResult } from "@/lib/storage";
 
 export async function createStaffAccount(formData: FormData) {
   const supabase = await createClient();
@@ -55,8 +56,20 @@ export async function createStaffAccount(formData: FormData) {
   return { success: true };
 }
 
-// Menghasilkan signed URL sementara untuk admin/staff melihat/preview file KTI
-export async function getFilePreviewUrl(filePath: string) {
+/**
+ * CATATAN MIGRASI:
+ * Sebelumnya fungsi ini terima `filePath` langsung dari client dan langsung
+ * memanggil supabase.storage.createSignedUrl(filePath). Sekarang terima
+ * `submissionId`, server query ulang submission (termasuk storage_provider)
+ * supaya client tidak bisa memalsukan path file, dan otomatis pilih provider
+ * yang benar (Supabase legacy vs cPanel) lewat wrapper getFileUrl().
+ *
+ * PENTING: sesuaikan pemanggilan di komponen FilePreviewButton — kirim
+ * submissionId, bukan lagi filePath.
+ */
+export async function getFilePreviewUrl(
+  submissionId: string
+): Promise<GetFileUrlResult> {
   const supabase = await createClient();
 
   const {
@@ -64,10 +77,15 @@ export async function getFilePreviewUrl(filePath: string) {
   } = await supabase.auth.getUser();
   if (!user) return { error: "Sesi habis." };
 
-  const { data, error } = await supabase.storage
-    .from("kti-files")
-    .createSignedUrl(filePath, 60 * 10); // berlaku 10 menit
+  const { data: submission, error } = await supabase
+    .from("submissions")
+    .select("file_path, storage_provider")
+    .eq("id", submissionId)
+    .single();
 
-  if (error) return { error: error.message };
-  return { url: data.signedUrl };
+  if (error || !submission) {
+    return { error: "Submission tidak ditemukan." };
+  }
+
+  return getFileUrl(submission);
 }
