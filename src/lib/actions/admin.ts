@@ -119,7 +119,13 @@ export async function deleteSubmission(submissionId: string) {
   const canModerate = profile?.role === "admin" || profile?.role === "staff";
   if (!canModerate) return { error: "Anda tidak punya izin untuk menghapus submission." };
 
-  const { data: submission, error: fetchError } = await supabase
+  // Pakai service role di sini dan seterusnya — otorisasi sudah dicek manual
+  // di atas (role admin/staff), jadi operasi delete tidak perlu (dan tidak boleh)
+  // terblokir RLS. Kalau pakai client biasa dan tabel submissions belum punya
+  // policy DELETE, Supabase tidak melempar error tapi diam-diam 0 baris terhapus.
+  const admin = createServiceRoleClient();
+
+  const { data: submission, error: fetchError } = await admin
     .from("submissions")
     .select("file_path, storage_provider")
     .eq("id", submissionId)
@@ -133,18 +139,12 @@ export async function deleteSubmission(submissionId: string) {
     if (submission.storage_provider === "cpanel") {
       await deleteFromCpanel(submission.file_path);
     } else {
-      const { error: storageError } = await supabase.storage
+      const { error: storageError } = await admin.storage
         .from("kti-files")
         .remove([submission.file_path]);
       if (storageError) throw storageError;
     }
   } catch (err: unknown) {
-    // Error 550 dari FTP server = file sudah tidak ada di sana (bisa karena
-    // sudah pernah dihapus manual, atau memang tidak pernah benar-benar
-    // terupload). Kalau tujuannya "file tidak ada di storage", ini sudah
-    // tercapai duluan — jadi diperlakukan sebagai sukses, BUKAN error fatal.
-    // Error lain (530 kredensial salah, timeout koneksi, dll) tetap dianggap
-    // gagal dan menghentikan proses supaya baris DB tidak ikut terhapus.
     const isFileNotFound =
       submission.storage_provider === "cpanel" &&
       typeof err === "object" &&
@@ -165,10 +165,20 @@ export async function deleteSubmission(submissionId: string) {
     );
   }
 
-  const { error: deleteError } = await supabase
+  const { error: deleteError, count } = await admin
     .from("submissions")
-    .delete()
+    .delete({ count: "exact" })
     .eq("id", submissionId);
+
+  if (!deleteError && count === 0) {
+    console.error(
+      `Delete submission ${submissionId} tidak error tapi 0 baris terhapus — kemungkinan RLS atau row sudah tidak ada.`
+    );
+    return {
+      error:
+        "Submission tidak berhasil dihapus dari database (0 baris terpengaruh). Kemungkinan ada policy RLS yang memblokir, hubungi developer.",
+    };
+  }
 
   if (deleteError) {
     console.error("File terhapus tapi baris DB gagal dihapus:", deleteError);
@@ -182,7 +192,6 @@ export async function deleteSubmission(submissionId: string) {
   revalidatePath(`/admin/submission/${submissionId}`);
   return { success: true };
 }
-
 /**
  * Update data staff: nama, identifier, role (staff<->admin), dan opsional reset password.
  * Kalau identifier berubah, email auth (hasil identifierToEmail) juga ikut di-update
