@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import StaffRow from "./staffRow";
 import CreateStaffForm from "./CreateStaffForm";
 
 const PAGE_SIZE = 20;
@@ -67,13 +68,15 @@ export default async function StaffPage({
 
       <div className="space-y-2">
         {staffList?.map((s) => (
-          <div
+          <StaffRow
             key={s.id}
-            className="rounded-lg border border-[#E4E9EF] bg-white px-4 py-3 text-sm"
-          >
-            <p className="font-medium text-[#10202F]">{s.full_name}</p>
-            <p className="text-[#64748B]">{s.identifier}</p>
-          </div>
+            staff={{
+              id: s.id,
+              full_name: s.full_name,
+              identifier: s.identifier,
+              role: s.role,
+            }}
+          />
         ))}
       </div>
 

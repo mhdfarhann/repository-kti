@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import DeleteSubmissionButtonCompact from "./submission/[id]/DeletesubmissionbuttonCompact";
+
 import {
   JENIS_KARYA_LABEL,
   STATUS_LABEL,
@@ -124,14 +126,17 @@ export default async function AdminPage({
             className="group relative block overflow-hidden rounded-xl border border-[#E4E9EF] bg-white p-5 transition-shadow hover:shadow-[0_1px_12px_rgba(11,51,88,0.08)]"
           >
             <span className="absolute inset-y-0 left-0 w-[3px] bg-[#0B3358] opacity-0 transition-opacity group-hover:opacity-100" />
-            <div className="mb-1.5 flex items-start justify-between gap-4">
+                        <div className="mb-1.5 flex items-start justify-between gap-4">
               <h2 className="font-medium text-[#10202F]">{s.judul}</h2>
-              <span
-                className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${STATUS_COLOR[s.status]}`}
-              >
-                <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT[s.status]}`} />
-                {STATUS_LABEL[s.status]}
-              </span>
+              <div className="flex shrink-0 items-center gap-2">
+                <span
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${STATUS_COLOR[s.status]}`}
+                >
+                  <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT[s.status]}`} />
+                  {STATUS_LABEL[s.status]}
+                </span>
+                <DeleteSubmissionButtonCompact submissionId={s.id} />
+              </div>
             </div>
             <p className="text-sm text-[#64748B]">
               {s.profiles?.full_name} ({s.profiles?.identifier}) <span className="mx-1.5 text-[#0B3358]">•</span> {JENIS_KARYA_LABEL[s.jenis_karya]} <span className="mx-1.5 text-[#0B3358]">•</span> {s.tahun} <span className="mx-1.5 text-[#0B3358]">•</span> {formatTanggal(s.created_at)}

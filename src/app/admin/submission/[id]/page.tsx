@@ -3,6 +3,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { JENIS_KARYA_LABEL, STATUS_LABEL, STATUS_COLOR, CHECKLIST_ITEMS, formatTanggal } from "@/lib/helpers";
 import ReviewActions from "./ReviewActions";
+import DeleteSubmissionButton from "./Deletesubmissionbutton";
 import FilePreviewButton from "./FilePreviewButton";
 
 export default async function ReviewSubmissionPage({
@@ -98,6 +99,7 @@ export default async function ReviewSubmissionPage({
 
       <div className="mb-6">
         <FilePreviewButton submissionId={item.id} fileName={item.file_name} />
+        <DeleteSubmissionButton submissionId={item.id} />
       </div>
 
       {item.status === "pending" ? (
