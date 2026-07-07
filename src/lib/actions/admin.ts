@@ -138,12 +138,31 @@ export async function deleteSubmission(submissionId: string) {
         .remove([submission.file_path]);
       if (storageError) throw storageError;
     }
-  } catch (err) {
-    console.error("Gagal menghapus file fisik:", err);
-    return {
-      error:
-        "Gagal menghapus file dari storage. Submission tidak dihapus untuk mencegah data tidak konsisten. Coba lagi (kalau providernya cpanel dan Anda sedang test di localhost, ini bisa jadi karena keterbatasan jaringan lokal — coba lewat Vercel Preview).",
-    };
+  } catch (err: unknown) {
+    // Error 550 dari FTP server = file sudah tidak ada di sana (bisa karena
+    // sudah pernah dihapus manual, atau memang tidak pernah benar-benar
+    // terupload). Kalau tujuannya "file tidak ada di storage", ini sudah
+    // tercapai duluan — jadi diperlakukan sebagai sukses, BUKAN error fatal.
+    // Error lain (530 kredensial salah, timeout koneksi, dll) tetap dianggap
+    // gagal dan menghentikan proses supaya baris DB tidak ikut terhapus.
+    const isFileNotFound =
+      submission.storage_provider === "cpanel" &&
+      typeof err === "object" &&
+      err !== null &&
+      "code" in err &&
+      (err as { code: unknown }).code === 550;
+
+    if (!isFileNotFound) {
+      console.error("Gagal menghapus file fisik:", err);
+      return {
+        error:
+          "Gagal menghapus file dari storage. Submission tidak dihapus untuk mencegah data tidak konsisten. Coba lagi (kalau providernya cpanel dan Anda sedang test di localhost, ini bisa jadi karena keterbatasan jaringan lokal — coba lewat Vercel Preview).",
+      };
+    }
+
+    console.warn(
+      `File ${submission.file_path} sudah tidak ada di cPanel (550), lanjut hapus baris DB.`
+    );
   }
 
   const { error: deleteError } = await supabase
