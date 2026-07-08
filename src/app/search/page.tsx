@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
-import { Search, FileSearch, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, FileSearch, ChevronLeft, ChevronRight, X, SlidersHorizontal } from "lucide-react";
 import { JENIS_KARYA_LABEL } from "@/lib/helpers";
 
 const PAGE_SIZE = 12;
@@ -14,6 +14,21 @@ const JENIS_OPTIONS = [
   { key: "lainnya", label: "Lainnya" },
 ];
 
+// Bungkus kata kunci yang cocok dengan <mark> tanpa mengubah teks asli
+function highlightMatch(text: string, keyword: string) {
+  if (!keyword.trim()) return text;
+  const parts = text.split(new RegExp(`(${keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi"));
+  return parts.map((part, i) =>
+    part.toLowerCase() === keyword.toLowerCase() ? (
+      <mark key={i} className="rounded bg-amber-200/70 px-0.5 text-inherit">
+        {part}
+      </mark>
+    ) : (
+      part
+    )
+  );
+}
+
 export default async function SearchPage({
   searchParams,
 }: {
@@ -25,6 +40,7 @@ export default async function SearchPage({
   const currentPage = Math.max(1, Number(page) || 1);
   const from = (currentPage - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
+  const hasActiveFilters = keyword.length > 0 || activeJenis !== "all";
 
   const supabase = await createClient();
 
@@ -68,8 +84,17 @@ export default async function SearchPage({
               name="q"
               defaultValue={keyword}
               placeholder="Cari judul, penulis, atau kata kunci..."
-              className="w-full rounded-lg border border-[#E4E9EF] py-2.5 pl-10 pr-3 text-sm text-[#10202F] outline-none transition-colors placeholder:text-[#94A3B8] focus:border-[#0B3358] focus:ring-2 focus:ring-[#0B3358]/10"
+              className="w-full rounded-lg border border-[#E4E9EF] py-2.5 pl-10 pr-9 text-sm text-[#10202F] outline-none transition-colors placeholder:text-[#94A3B8] focus:border-[#0B3358] focus:ring-2 focus:ring-[#0B3358]/10"
             />
+            {keyword && (
+              <Link
+                href={`/search?jenis=${activeJenis}`}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#94A3B8] hover:text-[#64748B]"
+                aria-label="Hapus kata kunci"
+              >
+                <X className="h-4 w-4" />
+              </Link>
+            )}
           </div>
           <button
             type="submit"
@@ -96,12 +121,50 @@ export default async function SearchPage({
         </div>
       </div>
 
+      {/* Ringkasan filter aktif */}
+      {hasActiveFilters && (
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[#F7F9FB] px-4 py-2.5">
+          <p className="flex items-center gap-2 text-sm text-[#475569]">
+            <SlidersHorizontal className="h-3.5 w-3.5 text-[#64748B]" />
+            <span>
+              {count ?? 0} hasil
+              {keyword && (
+                <>
+                  {" "}untuk <span className="font-medium text-[#10202F]">&ldquo;{keyword}&rdquo;</span>
+                </>
+              )}
+              {activeJenis !== "all" && (
+                <>
+                  {" "}
+                  <span className="mx-1 text-[#0B3358]">•</span>{" "}
+                  {JENIS_KARYA_LABEL[activeJenis as keyof typeof JENIS_KARYA_LABEL]}
+                </>
+              )}
+            </span>
+          </p>
+          <Link
+            href="/search"
+            className="text-xs font-medium text-[#0B3358] hover:underline underline-offset-4"
+          >
+            Hapus semua filter
+          </Link>
+        </div>
+      )}
+
       {(!results || results.length === 0) && (
         <div className="rounded-xl border border-dashed border-[#E4E9EF] bg-[#F7F9FB] p-10 text-center">
           <FileSearch className="mx-auto mb-3 h-8 w-8 text-[#94A3B8]" />
           <p className="text-sm text-[#64748B]">
             {keyword ? "Tidak ada hasil yang cocok." : "Belum ada karya yang dipublikasikan."}
           </p>
+          {hasActiveFilters && (
+            <Link
+              href="/search"
+              className="mt-3 inline-block text-sm font-medium text-[#0B3358] hover:underline underline-offset-4"
+            >
+              Coba tanpa filter
+            </Link>
+          )}
         </div>
       )}
 
@@ -116,11 +179,15 @@ export default async function SearchPage({
             <span className="mb-2 inline-block rounded-full border border-[#0B3358]/15 bg-[#EEF3F8] px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[#0B3358]">
               {JENIS_KARYA_LABEL[r.jenis_karya]}
             </span>
-            <h2 className="mb-1 font-medium text-[#10202F]">{r.judul}</h2>
+            <h2 className="mb-1 font-medium text-[#10202F]">
+              {highlightMatch(r.judul, keyword)}
+            </h2>
             <p className="mb-2 text-sm text-[#64748B]">
-              {r.penulis} <span className="mx-1.5 text-[#0B3358]">•</span> {r.tahun} <span className="mx-1.5 text-[#0B3358]">•</span> {r.program_studi}
+              {highlightMatch(r.penulis, keyword)} <span className="mx-1.5 text-[#0B3358]">•</span> {r.tahun} <span className="mx-1.5 text-[#0B3358]">•</span> {r.program_studi}
             </p>
-            <p className="line-clamp-2 text-sm text-[#475569]">{r.abstrak}</p>
+            <p className="line-clamp-2 text-sm text-[#475569]">
+              {highlightMatch(r.abstrak, keyword)}
+            </p>
           </Link>
         ))}
       </div>

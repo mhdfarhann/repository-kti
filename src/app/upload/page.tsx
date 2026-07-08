@@ -18,13 +18,19 @@ export default async function UploadPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="mb-1 text-2xl font-semibold text-stone-900">
-        Upload Karya Tulis Ilmiah
-      </h1>
-      <p className="mb-6 text-sm text-stone-500">
-        Isi data berikut dengan lengkap. Karya akan direview oleh bagian akademik
-        sebelum tampil di pencarian publik.
-      </p>
+      <div className="mb-8 border-b border-[#E4E9EF] pb-6">
+        <p className="mb-1 flex items-center gap-2 text-xs font-medium uppercase tracking-widest text-[#64748B]">
+          <span className="h-1.5 w-1.5 rounded-full bg-[#0B3358]" />
+          Kontribusi Karya Ilmiah
+        </p>
+        <h1 className="text-2xl font-semibold tracking-tight text-[#10202F]">
+          Upload Karya Tulis Ilmiah
+        </h1>
+        <p className="mt-1 text-sm text-[#64748B]">
+          Isi data berikut dengan lengkap. Karya akan direview oleh bagian akademik
+          sebelum tampil di pencarian publik.
+        </p>
+      </div>
       <UploadForm defaultProgramStudi={profile?.program_studi ?? ""} />
     </div>
   );
