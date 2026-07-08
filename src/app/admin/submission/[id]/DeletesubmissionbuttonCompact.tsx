@@ -2,14 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Trash2 } from "lucide-react";
 import { deleteSubmission } from "@/lib/actions/admin";
 
-/**
- * Versi ringkas DeleteSubmissionButton untuk dipasang di kartu list (AdminPage),
- * bukan di halaman detail. stopPropagation dipakai karena kartu ini sendiri
- * adalah <Link> ke halaman detail — tombol hapus harus mencegah klik itu
- * ikut trigger navigasi ke halaman review.
- */
 export default function DeleteSubmissionButtonCompact({
   submissionId,
 }: {
@@ -75,9 +70,11 @@ export default function DeleteSubmissionButtonCompact({
   return (
     <button
       onClick={openConfirm}
-      className="shrink-0 rounded-lg border border-rose-200 px-2.5 py-1 text-xs font-medium text-rose-700 opacity-0 transition-opacity hover:bg-rose-50 group-hover:opacity-100"
+      // opacity-100 di mobile (tidak ada hover), baru disembunyikan & muncul on-hover di desktop
+      className="shrink-0 rounded-lg border border-rose-200 p-1.5 text-rose-700 opacity-100 transition-opacity hover:bg-rose-50 md:opacity-0 md:group-hover:opacity-100"
+      aria-label="Hapus submission"
     >
-      Hapus
+      <Trash2 className="h-3.5 w-3.5" />
     </button>
   );
 }

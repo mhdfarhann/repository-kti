@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
+import { ArrowLeft, FileText, ListChecks, Check, X } from "lucide-react";
 import { JENIS_KARYA_LABEL, STATUS_LABEL, STATUS_COLOR, CHECKLIST_ITEMS, formatTanggal } from "@/lib/helpers";
 import ReviewActions from "./ReviewActions";
 import DeleteSubmissionButton from "./Deletesubmissionbutton";
@@ -48,7 +49,7 @@ export default async function ReviewSubmissionPage({
         href="/admin"
         className="mb-8 inline-flex items-center gap-1.5 text-sm font-medium text-[#64748B] transition-colors hover:text-[#0B3358]"
       >
-        ← Kembali ke Dashboard Admin
+        <ArrowLeft className="h-4 w-4" /> Kembali ke Dashboard Admin
       </Link>
 
       <div className="mb-6 flex items-start justify-between gap-4 border-b border-[#E4E9EF] pb-6">
@@ -72,7 +73,7 @@ export default async function ReviewSubmissionPage({
 
       <div className="mb-6 rounded-xl border border-[#E4E9EF] bg-white p-5">
         <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-[#64748B]">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#0B3358]" />
+          <FileText className="h-3.5 w-3.5" />
           Abstrak
         </h2>
         <p className="whitespace-pre-line text-sm leading-relaxed text-[#334155]">
@@ -82,22 +83,24 @@ export default async function ReviewSubmissionPage({
 
       <div className="mb-6 rounded-xl border border-[#E4E9EF] bg-white p-5">
         <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-[#64748B]">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#0B3358]" />
+          <ListChecks className="h-3.5 w-3.5" />
           Checklist yang Dicentang Pengaju
         </h2>
         <div className="space-y-2">
           {CHECKLIST_ITEMS.map((c) => (
             <p key={c.key} className="flex items-center gap-2.5 text-sm text-[#334155]">
-              <span className={item.checklist?.[c.key] ? "text-emerald-600" : "text-rose-500"}>
-                {item.checklist?.[c.key] ? "✓" : "✗"}
-              </span>
+              {item.checklist?.[c.key] ? (
+                <Check className="h-4 w-4 shrink-0 text-emerald-600" />
+              ) : (
+                <X className="h-4 w-4 shrink-0 text-rose-500" />
+              )}
               {c.label}
             </p>
           ))}
         </div>
       </div>
 
-      <div className="mb-6">
+      <div className="mb-6 flex flex-wrap gap-3">
         <FilePreviewButton submissionId={item.id} fileName={item.file_name} />
         <DeleteSubmissionButton submissionId={item.id} />
       </div>

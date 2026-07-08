@@ -6,6 +6,9 @@ export const metadata: Metadata = {
   title: "Repository KTI — Akademi Akupunktur Aceh",
   description:
     "Repositori karya tulis ilmiah, skripsi, dan laporan tugas akhir Akademi Akupunktur Aceh.",
+  icons: {
+    icon: "/aaa-logo.png",
+  },
 };
 
 export default function RootLayout({

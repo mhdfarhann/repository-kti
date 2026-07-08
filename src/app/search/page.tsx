@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
+import { Search, FileSearch, ChevronLeft, ChevronRight } from "lucide-react";
 import { JENIS_KARYA_LABEL } from "@/lib/helpers";
 
 const PAGE_SIZE = 12;
@@ -61,12 +62,15 @@ export default async function SearchPage({
 
         <form className="flex gap-2">
           <input type="hidden" name="jenis" value={activeJenis} />
-          <input
-            name="q"
-            defaultValue={keyword}
-            placeholder="Cari judul, penulis, atau kata kunci..."
-            className="w-full rounded-lg border border-[#E4E9EF] px-4 py-2.5 text-sm text-[#10202F] outline-none transition-colors placeholder:text-[#94A3B8] focus:border-[#0B3358] focus:ring-2 focus:ring-[#0B3358]/10"
-          />
+          <div className="relative w-full">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94A3B8]" />
+            <input
+              name="q"
+              defaultValue={keyword}
+              placeholder="Cari judul, penulis, atau kata kunci..."
+              className="w-full rounded-lg border border-[#E4E9EF] py-2.5 pl-10 pr-3 text-sm text-[#10202F] outline-none transition-colors placeholder:text-[#94A3B8] focus:border-[#0B3358] focus:ring-2 focus:ring-[#0B3358]/10"
+            />
+          </div>
           <button
             type="submit"
             className="shrink-0 rounded-lg bg-[#0B3358] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#082944]"
@@ -94,6 +98,7 @@ export default async function SearchPage({
 
       {(!results || results.length === 0) && (
         <div className="rounded-xl border border-dashed border-[#E4E9EF] bg-[#F7F9FB] p-10 text-center">
+          <FileSearch className="mx-auto mb-3 h-8 w-8 text-[#94A3B8]" />
           <p className="text-sm text-[#64748B]">
             {keyword ? "Tidak ada hasil yang cocok." : "Belum ada karya yang dipublikasikan."}
           </p>
@@ -128,23 +133,23 @@ export default async function SearchPage({
           <div className="flex gap-2">
             <Link
               href={`/search?q=${encodeURIComponent(keyword)}&jenis=${activeJenis}&page=${currentPage - 1}`}
-              className={`rounded-lg border border-[#E4E9EF] px-3.5 py-2 text-sm font-medium transition-colors ${
+              className={`inline-flex items-center gap-1 rounded-lg border border-[#E4E9EF] px-3.5 py-2 text-sm font-medium transition-colors ${
                 currentPage <= 1
                   ? "pointer-events-none opacity-40"
                   : "text-[#10202F] hover:border-[#0B3358]/30 hover:bg-[#EEF3F8]"
               }`}
             >
-              ← Sebelumnya
+              <ChevronLeft className="h-4 w-4" /> Sebelumnya
             </Link>
             <Link
               href={`/search?q=${encodeURIComponent(keyword)}&jenis=${activeJenis}&page=${currentPage + 1}`}
-              className={`rounded-lg border border-[#E4E9EF] px-3.5 py-2 text-sm font-medium transition-colors ${
+              className={`inline-flex items-center gap-1 rounded-lg border border-[#E4E9EF] px-3.5 py-2 text-sm font-medium transition-colors ${
                 currentPage >= totalPages
                   ? "pointer-events-none opacity-40"
                   : "text-[#10202F] hover:border-[#0B3358]/30 hover:bg-[#EEF3F8]"
               }`}
             >
-              Selanjutnya →
+              Selanjutnya <ChevronRight className="h-4 w-4" />
             </Link>
           </div>
         </div>

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Check, X, AlertTriangle } from "lucide-react";
 import { reviewSubmission } from "@/lib/actions/submissions";
 
 export default function ReviewActions({ submissionId }: { submissionId: string }) {
@@ -57,7 +58,8 @@ export default function ReviewActions({ submissionId }: { submissionId: string }
       />
 
       {error && (
-        <p className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+        <p className="mb-4 flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
           {error}
         </p>
       )}
@@ -67,21 +69,22 @@ export default function ReviewActions({ submissionId }: { submissionId: string }
           <button
             onClick={() => requestDecision("approved")}
             disabled={pending}
-            className="flex-1 rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-emerald-800 disabled:opacity-60"
+            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-emerald-800 disabled:opacity-60"
           >
-            Setujui
+            <Check className="h-4 w-4" /> Setujui
           </button>
           <button
             onClick={() => requestDecision("rejected")}
             disabled={pending}
-            className="flex-1 rounded-lg bg-rose-700 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-rose-800 disabled:opacity-60"
+            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-rose-700 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-rose-800 disabled:opacity-60"
           >
-            Tolak
+            <X className="h-4 w-4" /> Tolak
           </button>
         </div>
       ) : (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-          <p className="mb-3 text-sm text-amber-900">
+          <p className="mb-3 flex items-start gap-2 text-sm text-amber-900">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             {confirming === "approved"
               ? "Setujui karya ini? Karya akan langsung tampil di pencarian publik."
               : "Tolak karya ini? Pengaju akan menerima catatan penolakan dan perlu submit ulang."}

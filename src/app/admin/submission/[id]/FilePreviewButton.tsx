@@ -1,14 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { FileText, ExternalLink, AlertTriangle } from "lucide-react";
 import { getFilePreviewUrl } from "@/lib/actions/admin";
 
-/**
- * CATATAN MIGRASI:
- * Prop diganti dari `filePath` menjadi `submissionId` — server yang query ulang
- * file_path & storage_provider dari database, supaya client tidak bisa
- * memalsukan path file untuk mengakses submission lain.
- */
 export default function FilePreviewButton({
   submissionId,
   fileName,
@@ -38,10 +33,13 @@ export default function FilePreviewButton({
         disabled={pending}
         className="inline-flex items-center gap-2 rounded-lg border border-[#0B3358] px-4 py-2.5 text-sm font-medium text-[#0B3358] transition-colors hover:bg-[#EEF3F8] disabled:opacity-60"
       >
-        {pending ? "Membuka..." : `Buka File: ${fileName}`}
+        <FileText className="h-4 w-4" />
+        {pending ? "Membuka..." : fileName}
+        {!pending && <ExternalLink className="h-3.5 w-3.5 opacity-60" />}
       </button>
       {error && (
-        <p className="mt-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+        <p className="mt-2 flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
           {error}
         </p>
       )}
