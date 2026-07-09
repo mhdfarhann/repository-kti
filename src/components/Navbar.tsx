@@ -85,6 +85,12 @@ export default async function Navbar() {
               >
                 Upload
               </Link>
+              <Link
+  href="/settings"
+  className="shrink-0 rounded-lg border border-[#E4E9EF] px-4 py-2.5 text-sm font-medium text-[#10202F] transition-colors hover:bg-[#F7F9FB]"
+>
+  Pengaturan Akun
+</Link>
             </>
           )}
 

@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { uploadToCpanel } from "@/lib/storage/cpanel";
 import { CHECKLIST_ITEMS } from "@/lib/helpers";
+import { notify } from "@/lib/notifications";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
@@ -29,9 +30,6 @@ export async function submitKarya(formData: FormData) {
     return { error: "Lengkapi semua field wajib." };
   }
 
-  // CATATAN MIGRASI: sebelumnya file sudah diupload ke Supabase Storage di client,
-  // action ini cuma menerima file_path/file_name jadi (dikirim sebagai field terpisah).
-  // Sekarang file mentah (File object) dikirim langsung, action ini yang upload ke cPanel.
   const file = formData.get("file") as File | null;
 
   if (!file || file.size === 0) {
@@ -55,7 +53,6 @@ export async function submitKarya(formData: FormData) {
     return { error: "Semua syarat pada checklist wajib dicentang sebelum submit." };
   }
 
-  // Folder pertama = user.id, konsisten dengan aturan lama di Supabase Storage policy
   const safeFileName = file.name.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9._-]/g, "");
   const file_path = `${user.id}/${Date.now()}-${safeFileName}`;
   const file_name = file.name;
@@ -69,27 +66,47 @@ export async function submitKarya(formData: FormData) {
     return { error: "Gagal mengupload file ke server. Silakan coba lagi." };
   }
 
-  const { error: insertError } = await supabase.from("submissions").insert({
-    user_id: user.id,
-    judul,
-    abstrak,
-    jenis_karya,
-    program_studi,
-    pembimbing: pembimbing || null,
-    tahun,
-    kata_kunci: kata_kunci || null,
-    file_path,
-    file_name,
-    checklist,
-    storage_provider: "cpanel", // submission baru selalu lewat cPanel
-    status: "pending",
-  });
+  const { data: inserted, error: insertError } = await supabase
+    .from("submissions")
+    .insert({
+      user_id: user.id,
+      judul,
+      abstrak,
+      jenis_karya,
+      program_studi,
+      pembimbing: pembimbing || null,
+      tahun,
+      kata_kunci: kata_kunci || null,
+      file_path,
+      file_name,
+      checklist,
+      storage_provider: "cpanel",
+      status: "pending",
+    })
+    .select("id")
+    .single();
 
-  if (insertError) {
-    // TODO: pertimbangkan cleanup file di cPanel (deleteFromCpanel) kalau insert gagal,
-    // supaya tidak ada file "yatim" tanpa record di database.
-    return { error: "Gagal menyimpan data: " + insertError.message };
+  if (insertError || !inserted) {
+    return { error: "Gagal menyimpan data: " + (insertError?.message ?? "unknown") };
   }
+
+  // Notifikasi ke pengaju sendiri: konfirmasi karyanya sudah masuk antrian review.
+  // Best-effort — kalau gagal, tidak menggagalkan proses submit.
+  const { data: pengaju } = await supabase
+    .from("profiles")
+    .select("full_name, email")
+    .eq("id", user.id)
+    .single();
+
+  await notify({
+    userId: user.id,
+    submissionId: inserted.id,
+    type: "submission_received",
+    message: `Karya "${judul}" berhasil disubmit dan sedang menunggu review.`,
+    emailTo: pengaju?.email ?? null,
+    emailSubject: "Karya Anda Sedang Direview - Repositori KTI",
+    emailBody: `Halo ${pengaju?.full_name ?? ""},\n\nKarya berjudul "${judul}" sudah berhasil kami terima dan akan segera direview oleh bagian akademik. Anda akan mendapat notifikasi lagi setelah proses review selesai.\n\nTerima kasih.`,
+  });
 
   revalidatePath("/dashboard");
   redirect("/dashboard?submitted=1");
@@ -114,7 +131,7 @@ export async function reviewSubmission(formData: FormData) {
     return { error: "Alasan penolakan wajib diisi." };
   }
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("submissions")
     .update({
       status: decision,
@@ -122,9 +139,36 @@ export async function reviewSubmission(formData: FormData) {
       reviewed_by: user.id,
       reviewed_at: new Date().toISOString(),
     })
-    .eq("id", submissionId);
+    .eq("id", submissionId)
+    .select("id, judul, user_id")
+    .single();
 
-  if (error) return { error: error.message };
+  if (error || !updated) return { error: error?.message ?? "Submission tidak ditemukan." };
+
+  // Ambil data kontak si pengaju untuk dikirimi notifikasi
+  const { data: pengaju } = await supabase
+    .from("profiles")
+    .select("full_name, email")
+    .eq("id", updated.user_id)
+    .single();
+
+  const isApproved = decision === "approved";
+
+  await notify({
+    userId: updated.user_id,
+    submissionId: updated.id,
+    type: isApproved ? "submission_approved" : "submission_rejected",
+    message: isApproved
+      ? `Karya "${updated.judul}" telah disetujui dan sekarang tampil di repositori publik.`
+      : `Karya "${updated.judul}" ditolak. Catatan: ${catatan}`,
+    emailTo: pengaju?.email ?? null,
+    emailSubject: isApproved
+      ? "Karya Anda Disetujui - Repositori KTI"
+      : "Karya Anda Perlu Direvisi - Repositori KTI",
+    emailBody: isApproved
+      ? `Halo ${pengaju?.full_name ?? ""},\n\nSelamat! Karya berjudul "${updated.judul}" telah disetujui oleh reviewer dan sekarang dapat diakses publik di repositori.\n\nTerima kasih.`
+      : `Halo ${pengaju?.full_name ?? ""},\n\nKarya berjudul "${updated.judul}" belum bisa disetujui dengan catatan berikut:\n\n"${catatan}"\n\nSilakan perbaiki dan submit ulang karya Anda.\n\nTerima kasih.`,
+  });
 
   revalidatePath("/admin");
   revalidatePath("/dashboard");

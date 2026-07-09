@@ -2,7 +2,7 @@
 
 import { registerUser } from "@/lib/actions/auth";
 import { useState, useTransition } from "react";
-import { Eye, EyeOff, User, Lock, IdCard, GraduationCap } from "lucide-react";
+import { Eye, EyeOff, User, Lock, IdCard, GraduationCap, Mail } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
 
 export default function RegisterPage() {
@@ -72,6 +72,25 @@ export default function RegisterPage() {
               className="w-full rounded-lg border border-[#E4E9EF] py-2.5 pl-9 pr-3 text-sm text-[#10202F] outline-none transition-colors focus:border-[#0B3358] focus:ring-2 focus:ring-[#0B3358]/10"
             />
           </div>
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-[#64748B]">
+            Email Aktif
+          </label>
+          <div className="relative">
+            <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94A3B8]" />
+            <input
+              name="email"
+              type="email"
+              required
+              placeholder="email yang aktif dicek, untuk notifikasi status karya"
+              className="w-full rounded-lg border border-[#E4E9EF] py-2.5 pl-9 pr-3 text-sm text-[#10202F] outline-none transition-colors placeholder:text-[#94A3B8] focus:border-[#0B3358] focus:ring-2 focus:ring-[#0B3358]/10"
+            />
+          </div>
+          <p className="mt-1.5 text-xs text-[#94A3B8]">
+            Dipakai untuk mengirim notifikasi saat karya Anda direview, bukan untuk login.
+          </p>
         </div>
 
         <div>
