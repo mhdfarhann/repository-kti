@@ -7,8 +7,8 @@ const darkCodeTheme = themes.dracula;
 (module.exports = {
   title: 'Repository KTI',
   tagline: 'Dokumentasi Teknis & Arsitektur Sistem Akademi Akupunktur Aceh',
-  url: 'https://mhdfarhann.github.io',
-  baseUrl: '/repository-kti/',
+  url: 'https://d837c85d.docs-repository-kti.pages.dev',
+  baseUrl: '/',
   trailingSlash: false,
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
