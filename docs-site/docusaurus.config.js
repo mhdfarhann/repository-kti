@@ -9,6 +9,7 @@ const darkCodeTheme = themes.dracula;
   tagline: 'Dokumentasi Teknis & Arsitektur Sistem Akademi Akupunktur Aceh',
   url: 'https://mhdfarhann.github.io',
   baseUrl: '/repository-kti/',
+  trailingSlash: false,
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
   favicon: 'img/aaa-logo.png',
