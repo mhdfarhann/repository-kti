@@ -1,163 +1,74 @@
--- ============================================================
--- SCHEMA: Repository KTI Akademi Akupunktur Aceh
--- Jalankan file ini di Supabase Dashboard -> SQL Editor
--- ============================================================
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
 
--- 1. Tabel PROFILES (data tambahan di luar auth.users)
-create table if not exists profiles (
-  id uuid primary key references auth.users(id) on delete cascade,
-  identifier text unique not null,       -- NIM / NIDN
-  full_name text not null,
-  role text not null check (role in ('mahasiswa', 'dosen', 'admin')),
+CREATE TABLE public.profiles (
+  id uuid NOT NULL,
+  identifier text NOT NULL UNIQUE,
+  full_name text NOT NULL,
+  role text NOT NULL CHECK (role = ANY (ARRAY['mahasiswa'::text, 'dosen'::text, 'staff'::text, 'admin'::text])),
   program_studi text,
-  created_at timestamptz default now()
+  created_at timestamp with time zone DEFAULT now(),
+  email text,
+  CONSTRAINT profiles_pkey PRIMARY KEY (id),
+  CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
 );
-
--- 2. Tabel SUBMISSIONS (karya yang diupload)
-create table if not exists submissions (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references profiles(id) on delete cascade,
-  judul text not null,
-  abstrak text not null,
-  jenis_karya text not null check (jenis_karya in ('skripsi', 'laporan_ta', 'kti_dosen', 'jurnal', 'lainnya')),
-  program_studi text not null,
+CREATE TABLE public.submissions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  judul text NOT NULL,
+  abstrak text NOT NULL,
+  jenis_karya text NOT NULL CHECK (jenis_karya = ANY (ARRAY['skripsi'::text, 'laporan_ta'::text, 'kti_dosen'::text, 'jurnal'::text, 'lainnya'::text])),
+  program_studi text NOT NULL,
   pembimbing text,
-  tahun int not null,
+  tahun integer NOT NULL,
   kata_kunci text,
-  file_path text not null,               -- path di Supabase Storage
-  file_name text not null,
-  status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
-  checklist jsonb not null default '{}'::jsonb,
+  file_path text NOT NULL,
+  file_name text NOT NULL,
+  status text NOT NULL DEFAULT 'pending'::text CHECK (status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text])),
+  checklist jsonb NOT NULL DEFAULT '{}'::jsonb,
   catatan_reviewer text,
-  reviewed_by uuid references profiles(id),
-  reviewed_at timestamptz,
-  created_at timestamptz default now()
+  reviewed_by uuid,
+  reviewed_at timestamp with time zone,
+  created_at timestamp with time zone DEFAULT now(),
+  storage_provider text NOT NULL DEFAULT 'supabase'::text CHECK (storage_provider = ANY (ARRAY['supabase'::text, 'cpanel'::text])),
+  CONSTRAINT submissions_pkey PRIMARY KEY (id),
+  CONSTRAINT submissions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id),
+  CONSTRAINT submissions_reviewed_by_fkey FOREIGN KEY (reviewed_by) REFERENCES public.profiles(id)
 );
-
--- 3. Tabel ACCESS_REQUESTS (permintaan akses full text dari publik)
-create table if not exists access_requests (
-  id uuid primary key default gen_random_uuid(),
-  submission_id uuid not null references submissions(id) on delete cascade,
-  requester_name text not null,
-  requester_email text not null,
+CREATE TABLE public.access_requests (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  submission_id uuid NOT NULL,
+  requester_name text NOT NULL,
+  requester_email text NOT NULL,
   requester_institution text,
-  alasan text not null,
-  status text not null default 'pending' check (status in ('pending', 'granted', 'denied')),
-  created_at timestamptz default now()
+  alasan text NOT NULL,
+  status text NOT NULL DEFAULT 'pending'::text CHECK (status = ANY (ARRAY['pending'::text, 'granted'::text, 'denied'::text])),
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT access_requests_pkey PRIMARY KEY (id),
+  CONSTRAINT access_requests_submission_id_fkey FOREIGN KEY (submission_id) REFERENCES public.submissions(id)
 );
-
--- 4. VIEW publik: hanya expose kolom yang aman untuk karya yang sudah approved
-create or replace view public_submissions as
-select
-  s.id,
-  s.judul,
-  s.abstrak,
-  s.jenis_karya,
-  s.program_studi,
-  s.pembimbing,
-  s.tahun,
-  s.kata_kunci,
-  p.full_name as penulis,
-  s.reviewed_at
-from submissions s
-join profiles p on p.id = s.user_id
-where s.status = 'approved';
-
--- ============================================================
--- ROW LEVEL SECURITY
--- ============================================================
-
-alter table profiles enable row level security;
-alter table submissions enable row level security;
-alter table access_requests enable row level security;
-
--- PROFILES policies
-create policy "User bisa lihat profil sendiri"
-  on profiles for select
-  using (auth.uid() = id);
-
-create policy "Admin bisa lihat semua profil"
-  on profiles for select
-  using (
-    exists (select 1 from profiles where id = auth.uid() and role = 'admin')
-  );
-
-create policy "User bisa insert profil sendiri saat register"
-  on profiles for insert
-  with check (auth.uid() = id);
-
-create policy "Admin bisa insert profil staff baru"
-  on profiles for insert
-  with check (
-    exists (select 1 from profiles where id = auth.uid() and role = 'admin')
-  );
-
--- SUBMISSIONS policies
-create policy "User bisa lihat submission sendiri"
-  on submissions for select
-  using (auth.uid() = user_id);
-
-create policy "Admin bisa lihat semua submission"
-  on submissions for select
-  using (
-    exists (select 1 from profiles where id = auth.uid() and role = 'admin')
-  );
-
-create policy "User bisa insert submission sendiri"
-  on submissions for insert
-  with check (auth.uid() = user_id);
-
-create policy "Admin bisa update status submission"
-  on submissions for update
-  using (
-    exists (select 1 from profiles where id = auth.uid() and role = 'admin')
-  );
-
--- ACCESS_REQUESTS policies
-create policy "Siapa saja (publik) bisa insert access request"
-  on access_requests for insert
-  with check (true);
-
-create policy "Admin bisa lihat semua access request"
-  on access_requests for select
-  using (
-    exists (select 1 from profiles where id = auth.uid() and role = 'admin')
-  );
-
-create policy "Admin bisa update access request"
-  on access_requests for update
-  using (
-    exists (select 1 from profiles where id = auth.uid() and role = 'admin')
-  );
-
--- public_submissions (view) bisa diakses siapa saja termasuk yang belum login
-grant select on public_submissions to anon, authenticated;
-
--- ============================================================
--- STORAGE BUCKET
--- Jalankan bagian ini, atau buat manual lewat Dashboard -> Storage
--- ============================================================
-
-insert into storage.buckets (id, name, public)
-values ('kti-files', 'kti-files', false)
-on conflict (id) do nothing;
-
--- Hanya user yang login boleh upload ke folder miliknya sendiri
-create policy "User bisa upload file ke folder sendiri"
-  on storage.objects for insert
-  with check (
-    bucket_id = 'kti-files'
-    and auth.role() = 'authenticated'
-    and (storage.foldername(name))[1] = auth.uid()::text
-  );
-
--- Owner file & admin boleh baca file (untuk preview/review)
-create policy "Owner dan admin bisa baca file"
-  on storage.objects for select
-  using (
-    bucket_id = 'kti-files'
-    and (
-      (storage.foldername(name))[1] = auth.uid()::text
-      or exists (select 1 from profiles where id = auth.uid() and role = 'admin')
-    )
-  );
+CREATE TABLE public.civitas_akademika (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  identifier text NOT NULL UNIQUE,
+  nama_lengkap text NOT NULL,
+  role text NOT NULL CHECK (role = ANY (ARRAY['mahasiswa'::text, 'dosen'::text])),
+  program_studi text,
+  is_registered boolean NOT NULL DEFAULT false,
+  user_id uuid,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  email text,
+  CONSTRAINT civitas_akademika_pkey PRIMARY KEY (id),
+  CONSTRAINT civitas_akademika_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.notifications (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  submission_id uuid,
+  type text NOT NULL CHECK (type = ANY (ARRAY['submission_approved'::text, 'submission_rejected'::text, 'submission_received'::text])),
+  message text NOT NULL,
+  is_read boolean NOT NULL DEFAULT false,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT notifications_pkey PRIMARY KEY (id),
+  CONSTRAINT notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id),
+  CONSTRAINT notifications_submission_id_fkey FOREIGN KEY (submission_id) REFERENCES public.submissions(id)
+);

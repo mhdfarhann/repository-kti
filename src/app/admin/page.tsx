@@ -106,12 +106,20 @@ export default async function AdminPage({
           </h1>
         </div>
         {isSuperAdmin && (
-          <Link
-            href="/admin/staff"
-            className="shrink-0 rounded-lg border border-[#E4E9EF] px-4 py-2.5 text-sm font-medium text-[#10202F] transition-colors hover:border-[#0B3358]/30 hover:bg-[#EEF3F8]"
-          >
-            Kelola Akun Staff
-          </Link>
+          <div className="flex shrink-0 gap-2">
+            <Link
+              href="/admin/users"
+              className="rounded-lg border border-[#E4E9EF] px-4 py-2.5 text-sm font-medium text-[#10202F] transition-colors hover:border-[#0B3358]/30 hover:bg-[#EEF3F8]"
+            >
+              Kelola Akun Mahasiswa/Dosen
+            </Link>
+            <Link
+              href="/admin/staff"
+              className="rounded-lg border border-[#E4E9EF] px-4 py-2.5 text-sm font-medium text-[#10202F] transition-colors hover:border-[#0B3358]/30 hover:bg-[#EEF3F8]"
+            >
+              Kelola Akun Staff
+            </Link>
+          </div>
         )}
       </div>
 

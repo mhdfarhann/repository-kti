@@ -337,3 +337,195 @@ export async function deleteStaffAccount(staffId: string) {
   revalidatePath("/admin/staff");
   return { success: true };
 }
+
+/**
+ * Update data akun mahasiswa/dosen: nama, identifier, program_studi, email,
+ * dan opsional reset password. Mirip updateStaffAccount tapi untuk role
+ * mahasiswa/dosen — admin tidak bisa mengubah role user (tetap mahasiswa/dosen).
+ *
+ * Kalau identifier berubah, email auth (hasil identifierToEmail) juga ikut
+ * di-update supaya login tetap konsisten.
+ */
+export async function updateUserAccount(userId: string, formData: FormData) {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Sesi habis, login ulang." };
+
+  const { data: requesterProfile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (requesterProfile?.role !== "admin") {
+    return { error: "Hanya admin yang bisa mengelola akun mahasiswa/dosen." };
+  }
+
+  // Pastikan target adalah mahasiswa/dosen, bukan staff/admin
+  const admin = createServiceRoleClient();
+  const { data: targetProfile } = await admin
+    .from("profiles")
+    .select("role, identifier")
+    .eq("id", userId)
+    .single();
+
+  if (!targetProfile) return { error: "Akun tidak ditemukan." };
+  if (targetProfile.role !== "mahasiswa" && targetProfile.role !== "dosen") {
+    return { error: "Halaman ini hanya untuk mengelola akun mahasiswa/dosen." };
+  }
+
+  const identifier = String(formData.get("identifier") || "").trim();
+  const full_name = String(formData.get("full_name") || "").trim();
+  const program_studi = String(formData.get("program_studi") || "").trim();
+  const emailField = String(formData.get("email") || "").trim().toLowerCase();
+  const newPassword = String(formData.get("password") || "");
+
+  if (!identifier || !full_name) {
+    return { error: "Nama dan identifier wajib diisi." };
+  }
+
+  // Reset password jika diisi
+  if (newPassword.length > 0) {
+    if (newPassword.length < 8) {
+      return { error: "Password baru minimal 8 karakter." };
+    }
+    const { error: pwError } = await admin.auth.admin.updateUserById(userId, {
+      password: newPassword,
+    });
+    if (pwError) {
+      console.error("Gagal reset password user:", pwError);
+      return { error: "Gagal mereset password." };
+    }
+  }
+
+  // Update auth email (derived from identifier) + metadata
+  const authEmail = identifierToEmail(identifier);
+  const { error: emailError } = await admin.auth.admin.updateUserById(userId, {
+    email: authEmail,
+    user_metadata: { identifier, full_name, role: targetProfile.role },
+  });
+  if (emailError) {
+    console.error("Gagal update email/metadata user:", emailError);
+    return { error: "Gagal memperbarui identifier (kemungkinan sudah dipakai akun lain)." };
+  }
+
+  // Update profile di database
+  const { error: profileError } = await admin
+    .from("profiles")
+    .update({
+      full_name,
+      identifier,
+      program_studi: program_studi || null,
+      email: emailField || null,
+    })
+    .eq("id", userId);
+
+  if (profileError) {
+    console.error("Gagal update profil user:", profileError);
+    return { error: "Gagal menyimpan perubahan data." };
+  }
+
+  // Kalau identifier berubah, update juga di civitas_akademika
+  if (identifier !== targetProfile.identifier) {
+    await admin
+      .from("civitas_akademika")
+      .update({ identifier })
+      .eq("user_id", userId);
+  }
+
+  revalidatePath("/admin/users");
+  return { success: true };
+}
+
+/**
+ * Hapus akun mahasiswa/dosen secara permanen.
+ *
+ * Urutan:
+ * 1. Cek apakah ada submission — jika ada, tolak penghapusan (admin harus
+ *    menghapus submission satu per satu lewat halaman review dulu).
+ * 2. Hapus profile (baris di tabel profiles).
+ * 3. Hapus auth user.
+ * 4. Reset civitas_akademika.is_registered = false supaya NIM/NIDN bisa
+ *    didaftarkan ulang jika diperlukan.
+ */
+export async function deleteUserAccount(userId: string) {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Sesi habis, login ulang." };
+
+  const { data: requesterProfile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (requesterProfile?.role !== "admin") {
+    return { error: "Hanya admin yang bisa menghapus akun." };
+  }
+
+  const admin = createServiceRoleClient();
+
+  const { data: target } = await admin
+    .from("profiles")
+    .select("role, identifier")
+    .eq("id", userId)
+    .single();
+
+  if (!target) return { error: "Akun tidak ditemukan." };
+  if (target.role !== "mahasiswa" && target.role !== "dosen") {
+    return { error: "Halaman ini hanya untuk menghapus akun mahasiswa/dosen." };
+  }
+
+  // Cek apakah masih ada submission — tolak jika ada
+  const { count: submissionCount } = await admin
+    .from("submissions")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", userId);
+
+  if (submissionCount && submissionCount > 0) {
+    return {
+      error: `Akun ini masih punya ${submissionCount} submission. Hapus semua submission terlebih dahulu melalui halaman review admin, baru akun bisa dihapus.`,
+    };
+  }
+
+  // Hapus profile dulu
+  const { error: profileDeleteError } = await admin
+    .from("profiles")
+    .delete()
+    .eq("id", userId);
+  if (profileDeleteError) {
+    console.error("Gagal hapus profile user:", profileDeleteError);
+    return { error: "Gagal menghapus data profil." };
+  }
+
+  // Hapus auth user
+  const { error: authDeleteError } = await admin.auth.admin.deleteUser(userId);
+  if (authDeleteError) {
+    console.error("Profile terhapus tapi auth user gagal dihapus:", authDeleteError);
+    return {
+      error:
+        "Data profil sudah terhapus, tapi akun login gagal dihapus. Perlu cleanup manual di Supabase Auth dashboard.",
+    };
+  }
+
+  // Reset civitas_akademika supaya NIM/NIDN bisa didaftarkan ulang
+  const { error: resetError } = await admin
+    .from("civitas_akademika")
+    .update({ is_registered: false, user_id: null })
+    .eq("identifier", target.identifier);
+
+  if (resetError) {
+    // Bukan fatal — akun sudah terhapus, tapi identifier tidak bisa didaftarkan ulang
+    // sampai admin reset manual di database.
+    console.error("Gagal reset civitas_akademika:", resetError);
+  }
+
+  revalidatePath("/admin/users");
+  return { success: true };
+}

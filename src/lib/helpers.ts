@@ -68,7 +68,8 @@ export type Profile = {
   id: string;
   identifier: string;
   full_name: string;
-  role: "mahasiswa" | "dosen" | "admin";
+  role: "mahasiswa" | "dosen" | "staff" | "admin";
   program_studi: string | null;
+  email: string | null;
   created_at: string;
 };
