@@ -2,6 +2,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { logoutUser } from "@/lib/actions/auth";
+import MobileMenu from "@/components/MobileMenu";
+import UserMenu from "@/components/UserMenu";
+
+const ROLE_LABEL: Record<string, string> = {
+  admin: "Administrator",
+  staff: "Staf Akademik",
+};
 
 export default async function Navbar() {
   const supabase = await createClient();
@@ -24,9 +31,37 @@ export default async function Navbar() {
   const canModerate = isSuperAdmin || isStaff;
   const isMahasiswaDosen = user && !canModerate;
 
+  const links = [
+    { href: "/search", label: "Cari Karya" },
+    ...(isMahasiswaDosen
+      ? [
+          { href: "/dashboard", label: "Karya Saya" },
+          { href: "/upload", label: "Upload" },
+        ]
+      : []),
+    ...(canModerate
+      ? [{ href: "/admin", label: isSuperAdmin ? "Dashboard Admin" : "Dashboard" }]
+      : []),
+  ];
+
+  const roleLabel = isSuperAdmin
+    ? ROLE_LABEL.admin
+    : isStaff
+    ? ROLE_LABEL.staff
+    : "Mahasiswa / Dosen";
+
+  const account = user
+    ? {
+        loggedIn: true as const,
+        fullName: profile?.full_name ?? "Pengguna",
+        roleLabel,
+        logoutAction: logoutUser,
+      }
+    : { loggedIn: false as const };
+
   return (
-    <header className="border-b border-[#E4E9EF] bg-white">
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3.5">
+    <header className="relative border-b border-[#E4E9EF] bg-white">
+      <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
         <Link href="/search" className="flex items-center gap-3">
           <Image
             src="/aaa-logo.png"
@@ -46,71 +81,46 @@ export default async function Navbar() {
           </span>
         </Link>
 
-        <nav className="flex items-center gap-1 text-sm">
-          <Link
-            href="/search"
-            className="rounded-lg px-3 py-2 font-medium text-[#334155] transition-colors hover:bg-[#EEF3F8] hover:text-[#0B3358]"
-          >
-            Cari Karya
-          </Link>
-
-          {!user && (
-            <>
-              <Link
-                href="/login"
-                className="rounded-lg px-3 py-2 font-medium text-[#334155] transition-colors hover:bg-[#EEF3F8] hover:text-[#0B3358]"
-              >
-                Masuk
-              </Link>
-              <Link
-                href="/register"
-                className="ml-1 rounded-lg bg-[#0B3358] px-4 py-2 font-medium text-white transition-colors hover:bg-[#082944]"
-              >
-                Daftar
-              </Link>
-            </>
-          )}
-
-          {isMahasiswaDosen && (
-            <>
-              <Link
-                href="/dashboard"
-                className="rounded-lg px-3 py-2 font-medium text-[#334155] transition-colors hover:bg-[#EEF3F8] hover:text-[#0B3358]"
-              >
-                Karya Saya
-              </Link>
-              <Link
-                href="/upload"
-                className="rounded-lg px-3 py-2 font-medium text-[#334155] transition-colors hover:bg-[#EEF3F8] hover:text-[#0B3358]"
-              >
-                Upload
-              </Link>
-              <Link
-  href="/settings"
-  className="shrink-0 rounded-lg border border-[#E4E9EF] px-4 py-2.5 text-sm font-medium text-[#10202F] transition-colors hover:bg-[#F7F9FB]"
->
-  Pengaturan Akun
-</Link>
-            </>
-          )}
-
-          {canModerate && (
+        {/* Desktop nav */}
+        <nav className="hidden items-center gap-1 text-sm md:flex">
+          {links.map((link) => (
             <Link
-              href="/admin"
-              className="rounded-lg px-3 py-2 font-medium text-[#334155] transition-colors hover:bg-[#EEF3F8] hover:text-[#0B3358]"
+              key={link.href}
+              href={link.href}
+              className="inline-flex items-center rounded-lg px-3 py-2 font-medium text-[#334155] transition-colors hover:bg-[#EEF3F8] hover:text-[#0B3358]"
             >
-              {isSuperAdmin ? "Dashboard Admin" : "Dashboard"}
+              {link.label}
             </Link>
-          )}
-
-          {user && (
-            <form action={logoutUser} className="ml-2 border-l border-[#E4E9EF] pl-2">
-              <button className="rounded-lg px-3 py-2 font-medium text-[#64748B] transition-colors hover:bg-rose-50 hover:text-rose-700">
-                Keluar ({profile?.full_name ?? "..."})
-              </button>
-            </form>
-          )}
+          ))}
+          <div className="ml-2 flex items-center border-l border-[#E4E9EF] pl-3">
+            {account.loggedIn ? (
+              <UserMenu
+                fullName={account.fullName}
+                roleLabel={account.roleLabel}
+                logoutAction={account.logoutAction}
+              />
+            ) : (
+              <div className="flex items-center gap-1">
+                <Link
+                  href="/login"
+                  className="inline-flex items-center rounded-lg px-3 py-2 font-medium text-[#334155] hover:bg-[#EEF3F8]"
+                >
+                  Masuk
+                </Link>
+                <Link
+                  href="/register"
+                  className="inline-flex items-center rounded-lg bg-[#0B3358] px-3 py-2 font-medium text-white hover:bg-[#082944]"
+                >
+                  Daftar
+                </Link>
+              </div>
+            )}
+          </div>
         </nav>
+
+        {/* Mobile hamburger — SELALU dirender di sini, di luar nav desktop.
+            Berlaku untuk guest maupun user yang sudah login. */}
+        <MobileMenu links={links} account={account} />
       </div>
     </header>
   );
