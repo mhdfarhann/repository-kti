@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { Analytics } from "@vercel/analytics/next"
 import Navbar from "@/components/Navbar";
 
 export const metadata: Metadata = {
@@ -22,6 +23,7 @@ export default function RootLayout({
         <footer className="border-t border-[#E4E9EF] py-6 text-center text-sm text-[#64748B]">
           © {new Date().getFullYear()} Akademi Akupunktur Aceh — Repository Karya Tulis Ilmiah
         </footer>
+        <Analytics />
       </body>
     </html>
   );
