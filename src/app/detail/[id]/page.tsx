@@ -31,16 +31,25 @@ export default async function DetailPage({
   if (!item) notFound();
 
   // pembimbing_nama = array hasil resolve dari pembimbing_ids (fitur baru).
-  // Fallback ke kolom pembimbing (text lama) untuk submission sebelum fitur ini ada.
-  const pembimbingText =
+  // Fallback ke kolom pembimbing (text lama, dibungkus jadi array 1 elemen)
+  // untuk submission sebelum fitur multi-pembimbing ada.
+  const pembimbingArray: string[] =
     Array.isArray(item.pembimbing_nama) && item.pembimbing_nama.length > 0
-      ? item.pembimbing_nama.join(", ")
-      : item.pembimbing;
+      ? item.pembimbing_nama
+      : item.pembimbing
+        ? [item.pembimbing]
+        : [];
+
+  const pembimbingItems = pembimbingArray.map((nama, idx) => ({
+    icon: UserCheck,
+    label: pembimbingArray.length > 1 ? `Pembimbing ${idx + 1}` : "Pembimbing",
+    value: nama,
+  }));
 
   const metaItems = [
     { icon: User, label: "Penulis", value: item.penulis },
     { icon: GraduationCap, label: "Program Studi", value: item.program_studi },
-    pembimbingText && { icon: UserCheck, label: "Pembimbing", value: pembimbingText },
+    ...pembimbingItems,
     { icon: Calendar, label: "Tahun", value: item.tahun },
     item.kata_kunci && { icon: Tag, label: "Kata Kunci", value: item.kata_kunci },
     { icon: CalendarCheck, label: "Dipublikasikan", value: formatTanggal(item.reviewed_at) },

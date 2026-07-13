@@ -48,7 +48,7 @@ export default function MultiSelectDosen({
 
   return (
     <div ref={containerRef} className="relative">
-      {/* Hidden input per dosen terpilih, agar terbaca formData.getAll(name) di server action */}
+      {/* Hidden input per dosen terpilih, agar terbaca via formData.getAll(name) di server action */}
       {selected.map((d) => (
         <input key={d.id} type="hidden" name={name} value={d.id} />
       ))}
@@ -57,11 +57,14 @@ export default function MultiSelectDosen({
         onClick={() => setOpen(true)}
         className="flex min-h-[42px] w-full flex-wrap items-center gap-1.5 rounded-lg border border-[#E4E9EF] px-3 py-2 text-sm cursor-text focus-within:border-[#0B3358] focus-within:ring-2 focus-within:ring-[#0B3358]/10"
       >
-        {selected.map((d) => (
+        {selected.map((d, idx) => (
           <span
             key={d.id}
-            className="flex items-center gap-1 rounded-md bg-[#EEF3F8] px-2 py-1 text-xs font-medium text-[#0B3358]"
+            className="flex items-center gap-1.5 rounded-md bg-[#EEF3F8] px-2 py-1 text-xs font-medium text-[#0B3358]"
           >
+            <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#0B3358] text-[10px] font-semibold text-white">
+              {idx + 1}
+            </span>
             {d.nama}
             <button
               type="button"
@@ -87,6 +90,12 @@ export default function MultiSelectDosen({
           className="min-w-[120px] flex-1 bg-transparent text-sm outline-none placeholder:text-[#94A3B8]"
         />
       </div>
+
+      {selected.length > 1 && (
+        <p className="mt-1.5 text-[11px] text-[#94A3B8]">
+          Urutan angka menentukan urutan tampil (Pembimbing 1, 2, dst). Hapus dan pilih ulang untuk mengubah urutan.
+        </p>
+      )}
 
       {open && (
         <div className="absolute z-10 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-[#E4E9EF] bg-white shadow-lg">
