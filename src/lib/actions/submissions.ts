@@ -26,6 +26,17 @@ export async function submitKarya(formData: FormData) {
   const tahun = Number(formData.get("tahun"));
   const kata_kunci = String(formData.get("kata_kunci") || "").trim();
 
+  const pembimbingIds = formData.getAll("pembimbing_ids") as string[];
+const abstrakEn = formData.get("abstrak_en") as string;
+ 
+if (pembimbingIds.length === 0) {
+  return { error: "Pilih minimal satu dosen pembimbing." };
+}
+if (!abstrakEn || abstrakEn.trim().length === 0) {
+  return { error: "Abstract (English) wajib diisi." };
+}
+ 
+
   if (!judul || !abstrak || !jenis_karya || !program_studi || !tahun) {
     return { error: "Lengkapi semua field wajib." };
   }
@@ -82,6 +93,8 @@ export async function submitKarya(formData: FormData) {
       checklist,
       storage_provider: "cpanel",
       status: "pending",
+      pembimbing_ids: pembimbingIds, // uuid[], Supabase JS client handle otomatis
+      abstrak_en: abstrakEn,
     })
     .select("id")
     .single();

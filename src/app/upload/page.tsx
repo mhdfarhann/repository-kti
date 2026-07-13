@@ -16,6 +16,11 @@ export default async function UploadPage() {
     .eq("id", user.id)
     .single();
 
+  const { data: dosenList } = await supabase
+    .from("dosen")
+    .select("id, nama, nip_nidn")
+    .order("nama");
+
   return (
     <div className="mx-auto max-w-2xl">
       <div className="mb-8 border-b border-[#E4E9EF] pb-6">
@@ -31,7 +36,11 @@ export default async function UploadPage() {
           sebelum tampil di pencarian publik.
         </p>
       </div>
-      <UploadForm defaultProgramStudi={profile?.program_studi ?? ""} />
+      <UploadForm
+        defaultProgramStudi={profile?.program_studi ?? ""}
+        userEmail={profile?.email ?? user.email ?? ""}
+        dosenList={dosenList ?? []}
+      />
     </div>
   );
 }

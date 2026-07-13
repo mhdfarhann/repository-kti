@@ -30,10 +30,17 @@ export default async function DetailPage({
 
   if (!item) notFound();
 
+  // pembimbing_nama = array hasil resolve dari pembimbing_ids (fitur baru).
+  // Fallback ke kolom pembimbing (text lama) untuk submission sebelum fitur ini ada.
+  const pembimbingText =
+    Array.isArray(item.pembimbing_nama) && item.pembimbing_nama.length > 0
+      ? item.pembimbing_nama.join(", ")
+      : item.pembimbing;
+
   const metaItems = [
     { icon: User, label: "Penulis", value: item.penulis },
     { icon: GraduationCap, label: "Program Studi", value: item.program_studi },
-    item.pembimbing && { icon: UserCheck, label: "Pembimbing", value: item.pembimbing },
+    pembimbingText && { icon: UserCheck, label: "Pembimbing", value: pembimbingText },
     { icon: Calendar, label: "Tahun", value: item.tahun },
     item.kata_kunci && { icon: Tag, label: "Kata Kunci", value: item.kata_kunci },
     { icon: CalendarCheck, label: "Dipublikasikan", value: formatTanggal(item.reviewed_at) },
@@ -82,6 +89,18 @@ export default async function DetailPage({
           {item.abstrak}
         </p>
       </div>
+
+      {item.abstrak_en && (
+        <div className="mt-6 border-t border-[#E4E9EF] pt-6">
+          <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-[#64748B]">
+            <FileText className="h-3.5 w-3.5" />
+            Abstract (English)
+          </h2>
+          <p className="whitespace-pre-line text-sm leading-relaxed text-[#334155]">
+            {item.abstrak_en}
+          </p>
+        </div>
+      )}
 
       {/* 
         Fitur "Ajukan Akses Full Text" — disembunyikan sementara, belum dipakai.

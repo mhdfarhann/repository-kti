@@ -9,9 +9,11 @@ import {
   X,
   ListChecks,
   AlertTriangle,
+  MailWarning,
 } from "lucide-react";
 import { submitKarya } from "@/lib/actions/submissions";
 import { CHECKLIST_ITEMS } from "@/lib/helpers";
+import MultiSelectDosen, { type Dosen } from "@/components/MultiSelectDosen";
 
 const TAHUN_SEKARANG = new Date().getFullYear();
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
@@ -37,13 +39,18 @@ function SectionHeader({
 
 export default function UploadForm({
   defaultProgramStudi,
+  userEmail,
+  dosenList,
 }: {
   defaultProgramStudi: string;
+  userEmail: string;
+  dosenList: Dosen[];
 }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [abstrakLength, setAbstrakLength] = useState(0);
+  const [abstrakEnLength, setAbstrakEnLength] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -76,6 +83,12 @@ export default function UploadForm({
       return;
     }
 
+    const pembimbingIds = formData.getAll("pembimbing_ids");
+    if (pembimbingIds.length === 0) {
+      setError("Pilih minimal satu dosen pembimbing.");
+      return;
+    }
+
     startTransition(async () => {
       try {
         // File dikirim langsung sebagai bagian dari FormData ke server action.
@@ -94,6 +107,19 @@ export default function UploadForm({
 
   return (
     <form action={handleSubmit} className="space-y-5">
+      {/* Peringatan email */}
+      <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
+        <MailWarning className="h-5 w-5 shrink-0 text-amber-600" />
+        <div className="text-sm text-amber-800">
+          <p className="font-medium">Pastikan email akun kamu benar</p>
+          <p className="mt-0.5 text-amber-700">
+            Notifikasi status review akan dikirim ke{" "}
+            <span className="font-semibold">{userEmail}</span>. Kalau email ini
+            salah atau tidak aktif, hubungi admin sebelum melanjutkan submit.
+          </p>
+        </div>
+      </div>
+
       {/* Seksi: Informasi Karya */}
       <div className="rounded-xl border border-[#E4E9EF] bg-white p-5">
         <SectionHeader icon={BookOpen} title="Informasi Karya" />
@@ -122,6 +148,23 @@ export default function UploadForm({
               rows={5}
               placeholder="Ringkasan isi karya (akan tampil di halaman publik)"
               onChange={(e) => setAbstrakLength(e.target.value.length)}
+              className="w-full rounded-lg border border-[#E4E9EF] px-3 py-2.5 text-sm text-[#10202F] outline-none transition-colors placeholder:text-[#94A3B8] focus:border-[#0B3358] focus:ring-2 focus:ring-[#0B3358]/10"
+            />
+          </div>
+
+          <div>
+            <div className="mb-1.5 flex items-center justify-between">
+              <label className="block text-xs font-semibold uppercase tracking-wide text-[#64748B]">
+                Abstract (English)
+              </label>
+              <span className="text-[11px] text-[#94A3B8]">{abstrakEnLength} characters</span>
+            </div>
+            <textarea
+              name="abstrak_en"
+              required
+              rows={5}
+              placeholder="English summary of the work (shown on the public page)"
+              onChange={(e) => setAbstrakEnLength(e.target.value.length)}
               className="w-full rounded-lg border border-[#E4E9EF] px-3 py-2.5 text-sm text-[#10202F] outline-none transition-colors placeholder:text-[#94A3B8] focus:border-[#0B3358] focus:ring-2 focus:ring-[#0B3358]/10"
             />
           </div>
@@ -179,13 +222,9 @@ export default function UploadForm({
 
           <div>
             <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-[#64748B]">
-              Pembimbing
+              Dosen Pembimbing
             </label>
-            <input
-              name="pembimbing"
-              placeholder="Nama pembimbing (opsional)"
-              className="w-full rounded-lg border border-[#E4E9EF] px-3 py-2.5 text-sm text-[#10202F] outline-none transition-colors placeholder:text-[#94A3B8] focus:border-[#0B3358] focus:ring-2 focus:ring-[#0B3358]/10"
-            />
+            <MultiSelectDosen dosenList={dosenList} />
           </div>
 
           <div>
