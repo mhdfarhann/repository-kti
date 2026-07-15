@@ -138,12 +138,12 @@ export default function UploadForm({
           <div>
             <div className="mb-1.5 flex items-center justify-between">
               <label className="block text-xs font-semibold uppercase tracking-wide text-[#64748B]">
-                Abstrak
+                Ringkasan
               </label>
               <span className="text-[11px] text-[#94A3B8]">{abstrakLength} karakter</span>
             </div>
             <textarea
-              name="abstrak"
+              name="ringkasan"
               required
               rows={5}
               placeholder="Ringkasan isi karya (akan tampil di halaman publik)"
@@ -155,12 +155,12 @@ export default function UploadForm({
           <div>
             <div className="mb-1.5 flex items-center justify-between">
               <label className="block text-xs font-semibold uppercase tracking-wide text-[#64748B]">
-                Abstract (English)
+                Summary
               </label>
               <span className="text-[11px] text-[#94A3B8]">{abstrakEnLength} characters</span>
             </div>
             <textarea
-              name="abstrak_en"
+              name="summary"
               required
               rows={5}
               placeholder="English summary of the work (shown on the public page)"
@@ -179,7 +179,7 @@ export default function UploadForm({
                 required
                 className="w-full rounded-lg border border-[#E4E9EF] px-3 py-2.5 text-sm text-[#10202F] outline-none transition-colors focus:border-[#0B3358] focus:ring-2 focus:ring-[#0B3358]/10"
               >
-                <option value="skripsi">Skripsi</option>
+                <option value="karya_tulis_ilmiah">Karya Tulis Ilmiah</option>
                 <option value="laporan_ta">Laporan Tugas Akhir</option>
                 <option value="kti_dosen">Karya Ilmiah Dosen</option>
                 <option value="jurnal">Jurnal</option>

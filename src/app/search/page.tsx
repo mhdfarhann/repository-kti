@@ -7,7 +7,7 @@ const PAGE_SIZE = 12;
 
 const JENIS_OPTIONS = [
   { key: "all", label: "Semua Jenis" },
-  { key: "skripsi", label: "Skripsi" },
+  { key: "karya_tulis_ilmiah", label: "Karya Tulis Ilmiah" },
   { key: "laporan_ta", label: "Laporan Tugas Akhir" },
   { key: "kti_dosen", label: "Karya Ilmiah Dosen" },
   { key: "jurnal", label: "Jurnal" },
